@@ -1,3 +1,4 @@
+FROM madnight/docker-alpine-wkhtmltopdf:alpine-3.8
 FROM python:3.6-alpine3.8
 
 ARG EMAIL=devops@syncano.com
@@ -17,11 +18,12 @@ RUN set -ex \
         supervisor \
         postgresql-client \
         make \
-        # install openssl support
+        # openssl support
         ca-certificates \
         openssl \
         # nginx
         nginx \
+        libxml2 \
         # unzip and mksquashfs for env zip processing
         squashfs-tools \
         unzip \
@@ -38,8 +40,8 @@ RUN set -ex \
         ttf-freefont \
         fontconfig \
         dbus \
-        # envsubst
-        gettext \
+        # dependencies of wkhtmltopdf
+        libgcc libstdc++ libx11 glib libxrender libxext libintl \
     \
     # Install libcrypto from edge for gdal-2.3.2r1
     && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/main \
@@ -47,7 +49,6 @@ RUN set -ex \
     \
     # Install testing packages
     && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/testing \
-        wkhtmltopdf \
         geos \
         gdal \
     \
@@ -55,7 +56,6 @@ RUN set -ex \
     && ln -s /usr/lib/libgeos_c.so.1 /usr/lib/libgeos_c.so \
     \
     # PDF support
-    && mv /usr/bin/wkhtmltopdf /usr/bin/wkhtmltopdf-origin \
     && echo $'#!/usr/bin/env sh\n\
 Xvfb :0 -screen 0 1024x768x24 -ac +extension GLX +render -noreset & \n\
 DISPLAY=:0.0 wkhtmltopdf-origin $@ \n\
@@ -99,6 +99,9 @@ RUN set -ex \
 # Copy the application folder inside the container
 COPY --chown=syncano . /home/syncano/app
 RUN chown syncano:syncano /home/syncano/app
+
+# Copy wkhtmltopdf
+COPY --from=0 /bin/wkhtmltopdf /usr/bin/wkhtmltopdf-origin
 
 # Set the default command to execute
 # when creating a new container
